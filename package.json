@@ -1,0 +1,12 @@
+{
+  "name": "tw-house-ops",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI-powered house hunting pipeline for Taiwan",
+  "scripts": {
+    "test": "node --test tests/**/*.test.mjs",
+    "merge": "node merge-tracker.mjs",
+    "verify": "node verify-pipeline.mjs",
+    "dedup": "node dedup-tracker.mjs"
+  }
+}
