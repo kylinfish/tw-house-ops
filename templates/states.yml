@@ -1,0 +1,71 @@
+# Canonical tracker statuses for tw-house-ops
+# Source of truth for all status fields in tracker.md
+
+states:
+  - name: Scanned
+    description: Found by scanner, not yet evaluated
+    applies_to: [rent, buy]
+
+  - name: Evaluated
+    description: Report complete, pending decision
+    applies_to: [rent, buy]
+
+  - name: Skip
+    description: Low score or doesn't fit needs
+    applies_to: [rent, buy]
+
+  - name: Visit
+    description: Viewing scheduled
+    applies_to: [rent, buy]
+
+  - name: Visited
+    description: Viewed, pending decision
+    applies_to: [rent, buy]
+
+  - name: Pass
+    description: Rejected after viewing
+    applies_to: [rent, buy]
+
+  - name: Offer
+    description: Offer submitted
+    applies_to: [rent, buy]
+
+  - name: Negotiating
+    description: Price negotiation in progress (rent: rent reduction / extra terms; buy: price)
+    applies_to: [rent, buy]
+
+  - name: Signed
+    description: Contract signed
+    applies_to: [rent, buy]
+
+  - name: Done
+    description: Move-in complete / title transferred
+    applies_to: [rent, buy]
+
+  - name: Expired
+    description: Listing taken down
+    applies_to: [rent, buy]
+
+transitions:
+  - from: Scanned
+    to: [Evaluated, Expired]
+  - from: Evaluated
+    to: [Visit, Skip, Expired]
+  - from: Skip
+    to: [Expired]
+  - from: Visit
+    to: [Visited, Expired]
+  - from: Visited
+    to: [Offer, Pass, Expired]
+  - from: Pass
+    to: [Expired]
+  - from: Offer
+    to: [Negotiating, Signed, Expired]
+  - from: Negotiating
+    to: [Signed, Pass, Expired]
+  - from: Signed
+    to: [Done]
+  - from: Done
+    to: []
+  - from: Expired
+    to: []

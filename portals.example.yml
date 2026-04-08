@@ -1,0 +1,67 @@
+# tw-house-ops Portal Configuration
+# Copy this file to portals.yml. It will be auto-copied during onboarding.
+# portals.yml is in the SYSTEM LAYER — it may be updated by system updates.
+# Add custom companies to tracked_portals and adjust title_filter for your needs.
+
+title_filter:
+  property_types:
+    include: ["公寓", "華廈", "大樓", "透天", "套房"]
+    exclude: ["預售屋", "店面", "辦公室", "車位", "工業用"]
+  price:
+    rent_max: 30000       # Loose scanner ceiling — profile.yml has the precise value
+    buy_max: 30000000
+  size_min: 10            # Loose scanner floor
+
+tracked_portals:
+  # 591 uses url_template — parameters are substituted from profile.yml at scan time
+  - name: "591 租屋"
+    type: rent
+    enabled: true
+    url_template: "https://rent.591.com.tw/?region={region_code}&section={section_codes}&rentprice=0,{rent_max}&area={size_min},"
+
+  - name: "591 買屋"
+    type: buy
+    enabled: true
+    url_template: "https://sale.591.com.tw/?region={region_code}&price=0,{buy_max}&area={size_min},"
+
+  # Static portals use base_url — Playwright navigates directly, then applies filters via UI
+  - name: "樂屋網 買屋"
+    type: buy
+    enabled: true
+    base_url: "https://www.rakuya.com.tw/sell/search"
+
+  - name: "信義房屋"
+    type: buy
+    enabled: true
+    base_url: "https://www.sinyi.com.tw/buy/list"
+
+  - name: "永慶房屋"
+    type: buy
+    enabled: true
+    base_url: "https://www.yungching.com.tw/buy"
+
+  - name: "東森房屋"
+    type: buy
+    enabled: true
+    base_url: "https://www.ethouse.com.tw/sell"
+
+  - name: "住商不動產"
+    type: buy
+    enabled: true
+    base_url: "https://www.jjhouse.com.tw/sell"
+
+market_reference:
+  lvr_api:
+    enabled: true
+    use_for: price_comparison   # Never populates pipeline — only injected into evaluation reports
+
+search_queries:                 # Level 3: WebSearch broad discovery
+  - name: "591 rent discovery"
+    query: "site:rent.591.com.tw {districts} {rent_max}以下"
+    enabled: true
+  - name: "591 buy discovery"
+    query: "site:sale.591.com.tw {districts} {buy_max}以下"
+    enabled: true
+  - name: "Rakuya buy discovery"
+    query: "site:rakuya.com.tw {districts} 買屋"
+    enabled: true

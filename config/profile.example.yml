@@ -1,0 +1,64 @@
+# tw-house-ops User Profile
+# Copy this file to config/profile.yml and fill in your details.
+# This file (profile.yml) is in the USER LAYER — it will never be overwritten by system updates.
+
+user:
+  name: ""                          # Your name
+  commute_origin: ""                # Work/school address for commute calculation
+  commute_max_minutes: 40           # Max acceptable commute (minutes)
+
+search:
+  mode: rent                        # rent | buy | both
+  buyer_type: renter                # renter | first_time | upgrader
+
+budget:
+  rent_max: 25000                   # Monthly rent ceiling (TWD)
+  buy_max: 15000000                 # Total purchase price ceiling (TWD)
+  monthly_payment_max: 35000        # Max monthly mortgage payment (TWD)
+
+finance:                            # Used for buy mode
+  monthly_income: 80000             # Gross monthly income (TWD)
+  savings: 1500000                  # Available for down payment (TWD)
+  youth_loan_eligible: true         # 青安貸款: age ≤ 40, no existing property
+
+current_property:                   # upgrader only — leave null if not applicable
+  estimated_value: null             # Estimated current market value (TWD)
+  loan_remaining: null              # Outstanding mortgage balance (TWD)
+  purchase_year: null               # Year purchased (for 房地合一稅 calculation)
+  selling_strategy: sell_first      # sell_first | buy_first | simultaneous
+
+property:
+  size_min: 12                      # Minimum size (坪)
+  size_max: null                    # Maximum size (坪), null = no limit
+  floor_min: 2                      # Minimum floor (1 = ground floor ok)
+  types:
+    include: ["公寓", "華廈", "大樓", "透天", "套房"]
+    exclude: ["預售屋", "店面", "辦公室", "車位"]
+  age_max: 40                       # Maximum building age (years)
+  elevator: optional                # true | false | optional
+  parking: optional                 # true | false | optional
+  pet: false                        # Pet-friendly required?
+
+regions:
+  - city: "台北市"
+    districts: ["信義區", "大安區"]  # Target districts
+  # - city: "新北市"
+  #   districts: ["板橋區"]
+
+lifestyle:
+  mrt_walk_max: 15                  # Max walking distance to MRT (minutes)
+  priorities:                       # Ranked by importance
+    - mrt
+    - supermarket
+    - school
+    - hospital
+
+narrative:
+  deal_breakers:                    # Automatic disqualifiers
+    - "頂樓加蓋"
+    - "一樓"
+    - "鄰近殯儀館"
+  nice_to_have:                     # Positive signals (boost score)
+    - "南北採光"
+    - "社區管理"
+  notes: ""                         # Free text: anything else the evaluator should know
