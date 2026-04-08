@@ -1,4 +1,6 @@
-output/
-batch/tracker-additions/processed/
+output/*
+!output/.gitkeep
+batch/tracker-additions/processed/*
+!batch/tracker-additions/processed/.gitkeep
 node_modules/
 .DS_Store
