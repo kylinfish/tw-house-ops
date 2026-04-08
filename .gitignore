@@ -4,3 +4,5 @@ batch/tracker-additions/processed/*
 !batch/tracker-additions/processed/.gitkeep
 node_modules/
 .DS_Store
+data/scan-history.tsv
+batch/tracker-additions/*.tsv
