@@ -12,31 +12,112 @@
 | 🔑 **首購族** (First-time buyer) | 人生第一次買房 | afford、scan、buy、compare、visit |
 | 🔄 **換屋族** (Upgrader) | 已有房產，計劃賣舊買新 | switch、afford、scan、buy、compare、visit |
 
+### 整體流程比較
+
+```mermaid
+flowchart TD
+    Start([開始使用]) --> OB[Onboarding\n設定 profile.yml]
+    OB --> Type{你的 persona}
+
+    Type -->|🏠 租屋族| R_Scan
+    Type -->|🔑 首購族| FB_Afford[affordability\n財務試算]
+    Type -->|🔄 換屋族| UG_Switch[upgrade plan\n換屋財務規劃]
+
+    FB_Afford --> R_Scan[scan\n掃描平台物件]
+    UG_Switch --> R_Scan
+
+    R_Scan --> Pipeline[pipeline 批次評估\n或貼 URL 直接評估]
+    Pipeline --> Compare[compare\n比較多間物件]
+    Compare --> Visit[prepare visit\n看屋清單 + 出價策略]
+    Visit --> PostVisit[記錄看屋結果]
+    PostVisit --> Decision{決策}
+
+    Decision -->|繼續追蹤| Offer[出價 → 談判 → 簽約 → Done]
+    Decision -->|不符合| End[更新狀態 Pass / Skip]
+```
+
 ---
 
 ## 第一次使用：Onboarding
 
 不管哪個 persona，**第一次開啟 Claude Code 時**，系統會自動偵測缺少設定檔，啟動 Onboarding 流程。
 
-Claude 會依序問你 7 個問題（約 5 分鐘）：
+```mermaid
+flowchart TD
+    Launch([開啟 Claude Code]) --> Check{config/profile.yml\n存在？}
+    Check -->|是| Ready([直接使用])
+    Check -->|否| Q1["Q1：租屋 / 買屋 / 兩者都找？\n→ 設定 search.mode + buyer_type"]
+    Q1 --> Q2["Q2：目標區域 + 預算\n→ regions + budget"]
+    Q2 --> Q3["Q3：通勤起點 + 最長時間\n→ commute_origin + commute_max_minutes"]
+    Q3 --> IsUpgrader{buyer_type\n= upgrader？}
+    IsUpgrader -->|否| AutoCreate
+    IsUpgrader -->|是| Q4["Q4（換屋族）：現有房產資訊\n估值 / 剩餘貸款 / 購入年份 / 策略"]
+    Q4 --> AutoCreate["自動建立設定檔\nprofile.yml · tracker.md · pipeline.md · scan-history.tsv"]
+    AutoCreate --> CopyPortals[複製 portals.example.yml → portals.yml]
+    CopyPortals --> Ready2([設定完成 ✅])
+```
 
-1. **搜尋模式**：你要租屋、買屋、還是兩者都找？
-2. **目標區域與預算**：鎖定哪些縣市/行政區？月租上限或總價上限是多少？
-3. **通勤起點**：每天通勤到哪裡？可接受的最長通勤時間？
-4. **（換屋族專用）** 現有房產資訊：估值、剩餘貸款、購入年份、換屋策略
-5–7. 系統自動建立設定檔、複製 portals 設定、確認完成
-
-完成後會生成：
-- `config/profile.yml` — 你的個人設定（永遠不會被系統更新覆寫）
+Claude 會依序問你問題（約 5 分鐘），完成後生成：
+- `config/profile.yml` — 個人設定（永遠不會被系統更新覆寫）
 - `data/tracker.md` — 物件追蹤表
 - `data/pipeline.md` — 待評估 URL 收件匣
 - `portals.yml` — 各平台掃描設定
 
 ---
 
+## 物件評估流程（共用）
+
+所有 persona 的物件評估都走同一套兩階段流程：
+
+```mermaid
+flowchart TD
+    Input([URL 輸入 或 pipeline 批次]) --> Live{"Playwright 確認\n物件仍上架？"}
+    Live -->|已下架| Dead(["輸出：此物件已下架，停止評估"])
+    Live -->|仍在刊登| P1["Phase 1 快篩"]
+
+    P1 --> PC{"價格 ≤ 預算上限？"}
+    PC -->|否| SK1(["Skipped：超出預算"])
+    PC -->|是| SC{"坪數 ≥ size_min？"}
+    SC -->|否| SK2(["Skipped：坪數不足"])
+    SC -->|是| FC{"樓層 ≥ floor_min？"}
+    FC -->|否| SK3(["Skipped：樓層不符"])
+    FC -->|是| AC{"屋齡 ≤ age_max？"}
+    AC -->|否| SK4(["Skipped：屋齡過高"])
+    AC -->|是| DB{"符合 deal_breakers？"}
+    DB -->|有命中| SK5(["Skipped：命中排除條件"])
+    DB -->|無| Qualified(["Phase 1 通過 ✅"])
+
+    Qualified --> P2["Phase 2 完整評估\nrent.md 或 buy.md"]
+    P2 --> Extract[資料萃取\n價格 · 坪數 · 格局 · 設備]
+    Extract --> PriceAna[行情比較\n實價登錄 / 租金中位數]
+    Extract --> Commute[通勤試算]
+    Extract --> Score["5 維度評分\n(0–5 加權)"]
+    PriceAna --> Score
+    Commute --> Score
+    Score --> Report["寫入 reports/{###}-{district}-{road}-{date}.md"]
+    Report --> TSV["寫 TSV → batch/tracker-additions/"]
+    TSV --> Merge["node merge-tracker.mjs\n→ 更新 data/tracker.md"]
+```
+
+---
+
 ## Persona A：租屋族 (Renter)
 
 > **情境：** 工作換了，需要在台北市信義區或大安區找一間 2 房租屋，預算 25,000/月，上班地點在信義區。
+
+### 工作流程
+
+```mermaid
+flowchart LR
+    OB([Onboarding]) --> Scan["scan\n掃描 591·樂屋等平台"]
+    Scan --> Pipeline["pipeline\n批次評估 or 貼 URL"]
+    Pipeline --> Eval["rent.md\n行情比較·通勤·5維度評分"]
+    Eval --> Report["reports/ 報告\n+ 追蹤表更新"]
+    Report --> Compare["compare\n並列比較多間"]
+    Compare --> Visit["prepare visit\n看屋清單 + 出價策略"]
+    Visit --> Post["記錄看屋結果"]
+    Post --> Done(["簽約 / Pass / Skip"])
+```
 
 ### Step 1：Onboarding 設定
 
@@ -63,7 +144,7 @@ A: 30 分鐘
 你：scan
 ```
 
-Claude 會啟動背景 agent，透過 Playwright 瀏覽 591、樂屋等平台，套用你的區域和預算條件，去除重複物件，最後輸出：
+Claude 啟動背景 agent，透過 Playwright 瀏覽 591、樂屋等平台，套用區域和預算條件，去除重複物件後輸出：
 
 ```
 Portal Scan — 2026-04-08
@@ -85,22 +166,13 @@ Portal Scan — 2026-04-08
 你：pipeline
 ```
 
-Claude 逐一評估 `data/pipeline.md` 裡的物件，對每個通過 Phase 1 篩選的物件跑完整分析，輸出評估報告，寫入追蹤表。
-
-**或者，貼單一 URL 直接評估：**
+Claude 逐一評估 `data/pipeline.md` 裡的物件。**或貼單一 URL 直接評估：**
 
 ```
 你：https://rent.591.com.tw/rent-detail-12345678.html
 ```
 
-Claude 會：
-1. 用 Playwright 確認物件仍在刊登中
-2. Phase 1 快篩（價格/坪數/樓層/屋齡）
-3. 跑完整租屋評估：行情比較、通勤試算、5 維度評分
-4. 寫報告到 `reports/001-xinyi-songzhi-rd-2026-04-08.md`
-5. 更新追蹤表
-
-範例輸出（維度評分）：
+範例評分輸出：
 
 | 維度 | 分數 | 主要因素 |
 |------|------|---------|
@@ -117,8 +189,6 @@ Claude 會：
 你：compare 001, 003, 005
 ```
 
-Claude 讀取三份報告，產出並列比較表 + 排名 + 決策建議：
-
 > "如果只能看一間，建議優先看報告 003 — 大安區仁愛路，因為綜合分最高（4.2/5），且通勤在 20 分鐘內。"
 
 ### Step 5：準備看屋
@@ -127,26 +197,36 @@ Claude 讀取三份報告，產出並列比較表 + 排名 + 決策建議：
 你：prepare visit for 003
 ```
 
-Claude 根據 003 的評估報告生成：
-- **通用看屋清單**（漏水、採光、隔音、管委會⋯⋯）
-- **物件專屬清單**（從報告疑點清單衍生的具體確認事項）
-- **出價策略表**（掛牌價 vs 實價登錄行情 vs 建議出價 vs 底線）
+Claude 生成：通用看屋清單、物件專屬清單（從報告疑點衍生）、出價策略表（掛牌價 vs 實登行情 vs 建議出價 vs 底線）。
 
 ### Step 6：記錄看屋結果
-
-看完回來後：
 
 ```
 你：我看完 003 了，想記錄一下
 ```
 
-Claude 顯示後記錄表格，你填完後它自動把追蹤表的狀態從 `Visit` → `Visited`，並附上備註。
+填完後記錄表格，Claude 自動更新追蹤表狀態 `Visit` → `Visited`。
 
 ---
 
 ## Persona B：首購族 (First-time buyer)
 
 > **情境：** 月薪 8 萬，存款 150 萬，未滿 40 歲，想在台北市大安區或中山區買第一間房，不確定預算夠不夠。
+
+### 工作流程
+
+```mermaid
+flowchart LR
+    OB([Onboarding]) --> Afford["affordability\n財務試算\n⭐ 先做這個"]
+    Afford --> Scan["scan\n掃描物件"]
+    Scan --> Pipeline["pipeline\n批次評估 or 貼 URL"]
+    Pipeline --> Eval["buy.md\n貸款試算\n建物風險旗標\n5維度評分"]
+    Eval --> Report["reports/ 報告\n+ 追蹤表"]
+    Report --> Compare["compare\n比較物件"]
+    Compare --> Visit["prepare visit\n看屋清單 + 出價策略"]
+    Visit --> Post["記錄看屋"]
+    Post --> Done(["簽約 / Pass / Skip"])
+```
 
 ### Step 1：Onboarding 設定
 
@@ -174,13 +254,11 @@ A: 40 分鐘
 
 ### Step 2：先做財務試算（強烈建議）
 
-在找房之前，先確認預算是否符合實際：
-
 ```
 你：affordability
 ```
 
-Claude 根據你的月薪和存款計算：
+Claude 計算各方案的可負擔房價：
 
 | 方案 | 利率 | 最高房價 | 頭期款 | 月付 | 30年總利息 |
 |------|------|----------|--------|------|------------|
@@ -189,7 +267,7 @@ Claude 根據你的月薪和存款計算：
 | 一般 20% | 2.1% | 1,200萬 | 240萬 | 33,700 | 614萬 |
 | 一般 30% | 2.1% | 1,020萬 | 306萬 ⚠️ | 28,800 | 523萬 |
 
-⚠️ 存款不足（頭期款需求 > 150萬存款）
+⚠️ 存款不足
 
 加上各區行情比對：
 
@@ -198,15 +276,13 @@ Claude 根據你的月薪和存款計算：
 | 中山區 | 75萬/坪 | 18坪 | ✅ 足夠 |
 | 大安區 | 115萬/坪 | 11.7坪 | ⚠️ 不足 |
 
-> **Claude 結論：** "以您目前的收入和存款，青安 20% 方案是最可行的方向。大安區以您的預算較難購得 12 坪以上物件，建議以中山區為主力搜尋目標。"
-
 ### Step 3：掃描 + 評估
 
-和租屋族流程相同（`scan` → `pipeline` 或貼 URL），但評估報告額外包含：
+和租屋族相同（`scan` → `pipeline` 或貼 URL），評估報告額外包含：
 
 - **貸款試算表**（青安 vs 一般，20%/30% 頭期）
 - **建物年份風險旗標**（921 前建物、輻射屋、海砂屋）
-- **買屋版評分**（價格合理性權重提高到 35%）
+- **買屋版評分**（價格合理性權重 35%）
 
 ### Step 4–6：比較 → 看屋 → 記錄
 
@@ -217,6 +293,28 @@ Claude 根據你的月薪和存款計算：
 ## Persona C：換屋族 (Upgrader)
 
 > **情境：** 目前住新北市板橋，2018 年以 900 萬買入，估值約 1,200 萬，剩餘房貸 400 萬。計劃換到台北市內湖區，目標總價 2,000 萬。
+
+### 工作流程
+
+```mermaid
+flowchart TD
+    OB([Onboarding\n含現有房產資訊]) --> Switch["upgrade plan\n換屋財務規劃\n⭐ 先做這個"]
+
+    Switch --> TrackA["Track A：賣舊屋\n淨回款試算\n房地合一稅估算"]
+    Switch --> TrackB["Track B：買新房\n頭期款需求\n缺口分析"]
+
+    TrackA --> Strategy["換屋策略建議\n先賣後買 / 先買後賣 / 同步"]
+    TrackB --> Strategy
+
+    Strategy --> Scan["scan\n掃描目標區域"]
+    Scan --> Pipeline["pipeline\n批次評估 or 貼 URL"]
+    Pipeline --> Eval["buy.md\n含房地合一稅警示\n月付 vs 上限"]
+    Eval --> Report["reports/ 報告\n+ 追蹤表"]
+    Report --> Compare["compare"]
+    Compare --> Visit["prepare visit"]
+    Visit --> Post["記錄看屋"]
+    Post --> Done(["簽約 / Pass / Skip"])
+```
 
 ### Step 1：Onboarding 設定
 
@@ -258,8 +356,6 @@ A: 先賣後買
 你：upgrade plan
 ```
 
-Claude 執行 switch 模式，計算換屋的完整財務影響：
-
 **Track A：賣掉現有房產**
 
 | 項目 | 金額 |
@@ -267,17 +363,15 @@ Claude 執行 switch 模式，計算換屋的完整財務影響：
 | 預估售價 | 1,200 萬 |
 | 未還房貸 | −400 萬 |
 | 交易成本 (6%) | −72 萬 |
-| 房地合一稅估算（持有 8 年，稅率 20%）| −24 萬 |
+| 房地合一稅（持有 8 年，稅率 20%）| −24 萬 |
 | **淨回款** | **704 萬** |
 
 **Track B：買新房頭期款需求**
 
 | 方案 | 目標總價 | 頭期款需求 | 淨回款 | 缺口 |
 |------|---------|-----------|--------|------|
-| 20% 頭期 | 2,000 萬 | 400 萬 | 704 萬 | 無缺口（剩 304 萬） |
-| 30% 頭期 | 2,000 萬 | 600 萬 | 704 萬 | 無缺口（剩 104 萬） |
-
-> **Claude 結論：** "您持有超過 5 年，房地合一稅率 20%，稅負不重。淨回款 704 萬，無論 20% 或 30% 頭期均可負擔 2,000 萬目標。建議先賣後買，資金確定後議價能力更強。"
+| 20% 頭期 | 2,000 萬 | 400 萬 | 704 萬 | 無（剩 304 萬） |
+| 30% 頭期 | 2,000 萬 | 600 萬 | 704 萬 | 無（剩 104 萬） |
 
 ### Step 3：掃描 + 評估
 
@@ -285,10 +379,7 @@ Claude 執行 switch 模式，計算換屋的完整財務影響：
 你：scan
 ```
 
-評估報告（buy 模式）除了一般買屋分析外，還包含：
-
-- **換屋族 房地合一稅** 估算（列入疑點清單）
-- 現有房貸清償後的新貸款月付是否在 `monthly_payment_max` 以內
+評估報告除了一般買屋分析外，還包含換屋族專屬的房地合一稅警示與月付上限確認。
 
 ### Step 4–6：比較 → 看屋 → 記錄
 
@@ -298,16 +389,31 @@ Claude 執行 switch 模式，計算換屋的完整財務影響：
 
 ## 追蹤表狀態機
 
-每個物件在評估過程中會經歷以下狀態：
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Scanned : scanner 掃描到
+    Scanned --> Evaluated : pipeline / URL 評估完成
+    Evaluated --> Visit : 決定安排看屋
+    Evaluated --> Skip : 分數不足（< 3.5）
+    Visit --> Visited : 看屋完成
+    Visited --> Offer : 決定出價
+    Visited --> Pass : 看了不符合期待
+    Offer --> Negotiating : 進入議價
+    Offer --> Signed : 直接簽約（租屋常見）
+    Negotiating --> Signed : 談成
+    Negotiating --> Pass : 談不攏
+    Signed --> Done : 入住 / 過戶完成
 
-```
-Scanned → Evaluated → Visit → Visited → Offer → Negotiating → Signed → Done
-                    ↘ Skip
-                                       ↘ Pass
-                                                              (任何階段) → Expired
+    Scanned --> Expired : 物件下架
+    Evaluated --> Expired : 物件下架
+    Visit --> Expired : 物件下架
+    Visited --> Expired : 物件下架
+    Offer --> Expired : 物件下架
+    Negotiating --> Expired : 物件下架
 ```
 
-你可以直接跟 Claude 說 "把 003 改成 Visit 狀態" 或 "003 我決定不追蹤了"，它會更新 `data/tracker.md` 對應欄位。
+你可以直接跟 Claude 說 "把 003 改成 Visit 狀態" 或 "003 我決定不追了"，它會更新 `data/tracker.md` 對應欄位。
 
 ---
 
