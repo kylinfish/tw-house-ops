@@ -98,16 +98,52 @@ Pipeline 處理完成 — YYYY-MM-DD
 總共處理: N 個物件
   完整評估: N 個 (報告已生成)
   快篩略過: N 個 (SKIP)
-  評估報告: reports/{###}-...
 
 新增至追蹤表:
-  + {###} | {district} | {type} | {price} | {score}/5 | {status}
+  + {###} | {district} | {price} | {score}/5 | {status} | [報告連結](reports/{filename})
   ...
 
 略過物件:
   - {url} — {reason}
   ...
 ```
+
+**IMPORTANT — Human Review Output:**
+After the summary table, always output a dedicated review section. For each qualified listing (score ≥ 3.5), output the full report content inline — do NOT use file links. The user reads everything in the conversation, not in files.
+
+Format:
+
+```
+## 待人工審閱
+
+| 優先 | 物件 | 坪數 | 月租/總價 | 一句話 | 分數 | 原始物件 |
+|------|------|------|----------|--------|------|---------|
+| ⭐⭐ | {district} {address} | {size}坪 | {price} | {one-line summary} | {score}/5 | [🔗 591]({listing_url}) |
+| ⭐  | {district} {address} | {size}坪 | {price} | {one-line summary} | {score}/5 | [🔗 591]({listing_url}) |
+...
+
+---
+
+### ⭐⭐ {###} {district} {address}
+[🔗 591]({listing_url})
+
+{full report content — all sections: 基本資料, 價格分析, 通勤評估, 生活機能, 物件條件, 風險與潛力, 評分, 建議}
+
+---
+
+### ⭐ {###} {district} {address}
+[🔗 591]({listing_url})
+
+{full report content}
+
+---
+...
+```
+
+Priority rules:
+- ⭐⭐ = score ≥ 4.0 (推薦看屋)
+- ⭐  = score 3.5–3.9 (持保留態度)
+- Omit listings scored < 3.5 from this section entirely
 
 ---
 
