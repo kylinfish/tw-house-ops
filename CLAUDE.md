@@ -15,10 +15,18 @@ On every session start, run these checks **silently** (no output to the user unl
 3. Does `data/tracker.md` exist?
 4. Does `data/pipeline.md` exist?
 5. Does `modes/_profile.md` exist?
+6. Is `agent-browser` installed? Run `which agent-browser` silently.
 
 **If `modes/_profile.md` is missing** → silently copy from `modes/_profile.template.md`. This is the user's customization file and will never be overwritten by system updates.
 
 **If any of the five main files are missing** → enter Onboarding mode (see next section). Do NOT run evaluations, scans, or any other mode until the basics are in place.
+
+**If `agent-browser` is not found** → warn the user immediately (this is NOT silent):
+> ⚠️ `agent-browser` 未安裝。掃描（scan）與物件上架驗證功能需要它才能運作。請先執行：
+> ```bash
+> npm install -g agent-browser
+> ```
+> 安裝完成後重新開啟 Claude Code 即可正常使用。未安裝的情況下執行 scan 或貼上 URL，爬取結果將不可靠，後續評估可能基於過期或錯誤資料。
 
 ---
 
@@ -155,15 +163,17 @@ When the user pastes a URL, execute this sequence:
 
 ### 1. Verify Listing is Active
 
-Use Playwright:
-1. `browser_navigate` to the URL
-2. `browser_snapshot` to read the page
+Use `agent-browser` (via Bash tool):
+```bash
+agent-browser open {url}
+agent-browser snapshot -i
+```
 
 Interpretation:
 - Only footer/navbar present, no listing content → listing **closed** → report "Listing no longer available" and stop
 - Title + description + price + contact/apply section present → listing **active** → continue
 
-**NEVER** rely on WebSearch or WebFetch alone to verify if a listing is active. Always use Playwright.
+**NEVER** rely on WebSearch or WebFetch alone to verify if a listing is active. Always use `agent-browser`. If `agent-browser` is not installed, stop and remind the user to install it before proceeding.
 
 ### 2. Detect Rent vs Buy
 

@@ -9,7 +9,7 @@
 ## Overview
 
 Three-level scanning strategy:
-- **Level 1 — Playwright direct** (primary): Navigate each tracked portal's search results
+- **Level 1 — agent-browser direct** (primary): Navigate each tracked portal's search results
 - **Level 2 — 實價登錄 API** (reference only): Used during evaluation, NOT here — never populates pipeline.md
 - **Level 3 — WebSearch** (broad discovery): site: queries to find listings outside tracked portals
 
@@ -37,7 +37,9 @@ Three-level scanning strategy:
 
 ---
 
-## Step 2: Level 1 — Playwright Direct Scan (Primary)
+## Step 2: Level 1 — agent-browser Direct Scan (Primary)
+
+**Prerequisite:** `agent-browser` must be installed (`npm install -g agent-browser`). If not found, stop and remind the user before proceeding.
 
 For each enabled portal matching the search mode:
 
@@ -50,11 +52,28 @@ Substitute values from profile into the URL template:
 - `{buy_max}` → `budget.buy_max`
 - `{size_min}` → `property.size_min`
 
-Then: `browser_navigate` to the constructed URL → `browser_snapshot`
+Then:
+```bash
+agent-browser open {constructed_url}
+agent-browser snapshot -i
+```
 
 ### If portal has `base_url`:
 
-`browser_navigate` to `base_url` → `browser_snapshot` → interact with the site's search filters to apply district/price/size criteria → snapshot again.
+```bash
+agent-browser open {base_url}
+agent-browser snapshot -i
+```
+
+Then interact with the site's search filters to apply district/price/size criteria:
+```bash
+# Fill filter fields and submit search
+agent-browser fill @{district_input} "{district}"
+agent-browser fill @{price_input} "{price_max}"
+agent-browser click @{search_button}
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+```
 
 ### Extraction (both methods):
 
@@ -69,7 +88,14 @@ From the search results page, extract each listing:
 
 ### Pagination:
 
-If results show a "next page" / "下一頁" control, navigate to it and continue extracting until:
+If results show a "next page" / "下一頁" control:
+```bash
+agent-browser find text "下一頁" click
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+```
+
+Continue extracting until:
 - No more pages, or
 - All results are below the size_min threshold (stop early)
 
@@ -86,14 +112,17 @@ For each `search_queries[]` entry in portals.yml (where `enabled: true`):
 
 2. Run WebSearch with the substituted query
 
-3. For each result URL: **verify liveness with Playwright** before considering it:
-   - `browser_navigate` to the URL
-   - `browser_snapshot`
-   - Check for expired signals:
-     - URL contains `error=true` parameter
-     - Page content contains "物件已下架" / "no longer available" / "此物件已結束"
-     - Content is < 300 characters (only nav/footer, no listing body)
-   - Only proceed if listing appears active
+3. For each result URL: **verify liveness with `agent-browser`** before considering it:
+   ```bash
+   agent-browser open {url}
+   agent-browser snapshot -i
+   ```
+   Check for expired signals:
+   - URL contains `error=true` parameter
+   - Page content contains "物件已下架" / "no longer available" / "此物件已結束"
+   - Content is < 300 characters (only nav/footer, no listing body)
+
+   Only proceed if listing appears active.
 
 ---
 
@@ -185,3 +214,4 @@ List each newly added listing with a `+` prefix. If nothing was added, say "→ 
 - **Level 2 (實價登錄) is evaluation-only.** It provides price comparison data during rent.md / buy.md evaluation — it never populates pipeline.md.
 - **Do not verify liveness for Level 1 results** — freshly scraped search pages are assumed live. Liveness verification is only needed for Level 3 (WebSearch cached results).
 - **If a portal's page fails to load** (JS error, CAPTCHA, etc.): skip that portal, note it in the summary, continue with others.
+- **If `agent-browser` is not installed**: do not attempt any Level 1 or Level 3 liveness verification. Stop immediately and remind the user: `npm install -g agent-browser`.
