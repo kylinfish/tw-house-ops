@@ -163,3 +163,11 @@ node --test tests/**/*.test.mjs  # 執行所有測試
 ## 使用原則
 
 本系統以精準找房為目標，非大量瀏覽。Claude 不會代替你送出 offer、簽約或送出任何申請。評分低於 3.5/5 的物件將被明確建議不值得追蹤。
+
+---
+
+## 支持這個專案
+
+如果這個工具對你的找房過程有幫助，歡迎請我喝杯咖啡 ☕
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kylinwin)
