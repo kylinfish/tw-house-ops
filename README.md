@@ -2,6 +2,12 @@
 
 台灣看房 AI 管線，建構於 Claude Code 之上。自動化物件發掘、評估與追蹤，涵蓋租屋與購屋市場的完整搜尋流程。
 
+支援三種使用者類型：**租屋族**、**首購族**、**換屋族**。
+
+> Inspired by [santifer/career-ops](https://github.com/santifer/career-ops) — same ops-style approach, applied to 台灣租屋 & 購屋.
+
+![物件追蹤表](demo-images/tracker-demo.png)
+
 ---
 
 ## 功能概覽
@@ -11,8 +17,6 @@
 - **追蹤** 所有考慮過的物件，以結構化 Markdown 表格記錄
 - **試算** 可負擔房價（首購族）與換屋財務規劃（換屋族）
 - **準備** 根據評估報告產生看屋清單與議價策略
-
-支援三種使用者類型：**租屋族**、**首購族**、**換屋族**。
 
 ---
 
@@ -55,6 +59,26 @@ agent-browser --version
 | `affordability` | 試算可負擔房價與區域適配（首購族） |
 | `upgrade plan` | 換屋財務規劃：賣舊屋 + 買新房時程與資金缺口分析（換屋族） |
 | `tracker` | 顯示所有追蹤物件的摘要 |
+
+---
+
+## Demo
+
+### Pipeline 批次評估輸出
+
+批次跑完後自動輸出摘要表 + 本輪最佳推薦，每筆附原始連結供人工覆核。
+
+![Pipeline 處理摘要](demo-images/pipeline-summary-demo.png)
+
+### 物件評估報告
+
+每間物件產出完整報告：價格分析（含實價登錄比對）、通勤試算、五維度評分、疑點清單、看屋問題清單。
+
+![報告詳細內容 1](demo-images/report-details-1.png)
+
+![報告詳細內容 2](demo-images/report-details-2.png)
+
+![報告詳細內容 3](demo-images/report-details-3.png)
 
 ---
 
